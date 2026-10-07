@@ -1,0 +1,16 @@
+<!--
+  android/app/src/main/AndroidManifest.xml 에 병합할 내용.
+  전체 파일을 덮어쓰지 말고, 아래 두 블록만 해당 위치에 추가/병합하세요.
+-->
+
+<!-- 1) <manifest> 태그 바로 안, 기존 <uses-permission> 들 옆에 추가 -->
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+<uses-permission android:name="android.permission.WAKE_LOCK" />
+<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+<!-- 2) <application> 태그 안, 기존 <activity> 옆에 추가 -->
+<service
+    android:name=".MonitorForegroundService"
+    android:foregroundServiceType="dataSync"
+    android:exported="false" />

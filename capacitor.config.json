@@ -1,0 +1,8 @@
+{
+  "appId": "com.juanla0701.futuresignal",
+  "appName": "선물 신호 감시",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  }
+}

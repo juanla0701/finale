@@ -1,0 +1,18 @@
+{
+  "name": "futures-signal-android",
+  "version": "1.0.0",
+  "private": true,
+  "description": "선물 신호 감시 웹앱을 Capacitor로 감싼 Android 패키징 프로젝트 (웹앱 로직은 수정하지 않음)",
+  "scripts": {
+    "copy-web": "node copy-web.js",
+    "sync": "npm run copy-web && npx cap sync android",
+    "open": "npx cap open android"
+  },
+  "dependencies": {
+    "@capacitor/core": "^6.1.2",
+    "@capacitor/android": "^6.1.2"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^6.1.2"
+  }
+}

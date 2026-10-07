@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0D1117">
+<meta name="description" content="Binance 선물 매수/매도 신호 감시 도구 (자동매매 아님)">
+<title>선물 신호 감시</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+<div id="toastBox"></div>
+
+<div class="topbar">
+  <div class="brand">
+    <span class="dot"></span>
+    <h1 data-i18n="appNameShort">신호감시</h1>
+  </div>
+  <div class="topbar-actions">
+    <button class="icon-btn" id="menuBtn" title="menu">☰</button>
+    <button class="icon-btn" id="langToggle" title="KO/EN">가/A</button>
+    <button class="icon-btn" id="settingsBtn" title="settings">⚙</button>
+  </div>
+</div>
+
+<div id="menuDropdown" class="menu-dropdown">
+  <button class="menu-item active" id="menuCoinBtn" data-view="coin">
+    <span data-i18n="coinFutures">코인 선물</span>
+  </button>
+  <button class="menu-item" id="menuStockBtn" data-view="stock">
+    <span data-i18n="stockFutures">주식 선물</span>
+  </button>
+  <button class="menu-item" id="menuRecordsBtn" data-view="records">
+    <span data-i18n="menuRecords">내 기록</span>
+  </button>
+  <button class="menu-item" id="menuPerfBtn" data-view="performance">
+    <span data-i18n="menuPerformance">신호 성능</span>
+  </button>
+</div>
+
+<div id="settingsPanel">
+  <div class="settings-inner">
+    <div class="settings-row">
+      <label data-i18n="language">언어</label>
+      <span style="font-size:12px; color:var(--text-dim);">한국어 / English</span>
+    </div>
+    <div class="settings-row">
+      <button id="notifyBtn" class="notify-toggle off" aria-pressed="false" style="width:100%;">알림 OFF</button>
+    </div>
+    <div class="settings-row" id="bgMonitorRow" style="display:none;">
+      <button id="bgMonitorBtn" class="notify-toggle off" aria-pressed="false" style="width:100%;" data-i18n="bgMonitorOff">백그라운드 감시 OFF</button>
+    </div>
+    <div class="settings-row">
+      <button id="learnBtn" class="notify-toggle on" aria-pressed="true" style="width:100%;" data-i18n="learnOn">자가학습 ON</button>
+    </div>
+    <div class="settings-row">
+      <button id="signalFilterBtn" class="notify-toggle on" aria-pressed="true" style="width:100%;" data-i18n="signalFilterOn">신호 필터 ON</button>
+    </div>
+    <div class="filter-notice" id="signalFilterNotice"></div>
+    <div class="settings-row">
+      <button id="confFilterBtn" class="notify-toggle off" aria-pressed="false" style="width:100%;" data-i18n="confFilterOff">종합 신뢰도 필터 OFF</button>
+    </div>
+    <div class="conf-filter-row" id="confFilterRow" style="display:none;">
+      <div class="conf-filter-head">
+        <span class="conf-filter-k" data-i18n="confFilterMinLabel">최소 신뢰도</span>
+        <span class="conf-filter-v" id="confFilterMinValue">60% 이상</span>
+      </div>
+      <input type="range" id="confFilterMinRange" class="conf-filter-range" min="0" max="100" step="5" value="60">
+    </div>
+    <div class="filter-notice" id="confFilterNotice"></div>
+    <div class="conf-block-box" id="confBlockBox" style="display:none;">
+      <div class="conf-block-head">
+        <span class="conf-block-title" data-i18n="confBlockTitle">차단된 알림</span>
+        <button type="button" class="conf-block-clear" id="confBlockClearBtn" data-i18n="confBlockClear">이력 지우기</button>
+      </div>
+      <div class="conf-block-summary" id="confBlockSummary"></div>
+      <div class="conf-block-list" id="confBlockList"></div>
+    </div>
+    <div class="learn-stats-row">
+      <div class="learn-stat"><div class="learn-stat-k" data-i18n="totalEntries">학습 데이터</div><div class="learn-stat-v" id="learnEntries">0</div></div>
+      <div class="learn-stat"><div class="learn-stat-k" data-i18n="win">수익</div><div class="learn-stat-v" id="learnWins">0</div></div>
+      <div class="learn-stat"><div class="learn-stat-k" data-i18n="loss">손실</div><div class="learn-stat-v" id="learnLosses">0</div></div>
+      <div class="learn-stat"><div class="learn-stat-k" data-i18n="winRate">승률</div><div class="learn-stat-v" id="learnWinRate">-</div></div>
+    </div>
+    <div class="learn-applied-notice" id="learnAppliedNotice"></div>
+
+    <!-- 학습 성능 분석 (기존 학습 상태 영역 안에 자연스럽게 배치, 읽기 전용 분석) -->
+    <div class="learn-perf" id="learnPerf">
+      <div class="learn-perf-head">
+        <span class="learn-perf-title" data-i18n="learnPerfTitle">자가학습 성능</span>
+        <span class="learn-trend" id="learnTrend">-</span>
+      </div>
+      <div class="learn-perf-row">
+        <div class="learn-perf-item">
+          <span class="learn-perf-k" data-i18n="recent10">최근 10회</span>
+          <span class="learn-perf-v" id="perfRecent10">-</span>
+        </div>
+        <div class="learn-perf-item">
+          <span class="learn-perf-k" data-i18n="previous10">이전 10회</span>
+          <span class="learn-perf-v" id="perfPrevious10">-</span>
+        </div>
+        <div class="learn-perf-item">
+          <span class="learn-perf-k" data-i18n="perfChange">변화</span>
+          <span class="learn-perf-v" id="perfDelta">-</span>
+        </div>
+      </div>
+      <div class="learn-perf-row">
+        <div class="learn-perf-item">
+          <span class="learn-perf-k" data-i18n="recent20">최근 20회</span>
+          <span class="learn-perf-v" id="perfRecent20">-</span>
+        </div>
+        <div class="learn-perf-item">
+          <span class="learn-perf-k" data-i18n="initial10">초기 10회</span>
+          <span class="learn-perf-v" id="perfInitial10">-</span>
+        </div>
+      </div>
+      <canvas id="learnPerfChart" class="learn-perf-chart"></canvas>
+      <div class="learn-perf-note" id="perfNote"></div>
+    </div>
+
+    <!-- 점수별 신호 성능 (시장 × 점수 × 방향) -->
+    <div class="learn-perf" id="scorePerfCard">
+      <div class="learn-perf-head">
+        <span class="learn-perf-title" data-i18n="scorePerfTitle">점수별 신호 성능</span>
+      </div>
+      <div id="scorePerfBody"></div>
+      <div class="learn-perf-note" id="snapshotNote"></div>
+    </div>
+
+    <div class="settings-row">
+      <button id="learnResetBtn" class="ghost-btn" style="width:100%;" data-i18n="resetLearnData">자가학습 데이터 초기화</button>
+    </div>
+    <div class="settings-row">
+      <span class="current-page-label" id="currentPageLabel">코인 선물</span>
+    </div>
+    <form class="add-form" id="addForm">
+      <input type="text" id="symbolInput" maxlength="20">
+      <button type="submit" data-i18n="addSymbol">추가</button>
+    </form>
+    <div class="settings-row">
+      <span data-i18n="symbolLimit">종목</span>
+      <span class="count-label" id="symbolCount">0 / 50</span>
+    </div>
+    <div class="chip-list" id="chipList"></div>
+    <div class="disclaimer" data-i18n="disclaimer">
+      이 앱은 매수/매도 신호만 알려주며 자동으로 주문을 실행하지 않습니다.
+    </div>
+  </div>
+</div>
+
+<div id="list"></div>
+
+<!-- Detail view -->
+<div id="detailView">
+  <div class="detail-top">
+    <button id="detailBack">‹</button>
+    <h2 id="detailSym">-</h2>
+  </div>
+  <div class="detail-body">
+    <div class="detail-price-row">
+      <div id="detailPrice">-</div>
+      <div class="badge-lg none" id="detailBadge">-</div>
+    </div>
+    <div class="detail-both-scores" id="detailBothScores">-</div>
+    <div class="detail-learn-info" id="detailLearnInfo"></div>
+
+    <!-- 유사 패턴 비교: 전체 점수 승률 vs 현재 패턴과 유사한 과거 신호 승률 -->
+    <!-- Volume Profile (관찰 전용 — 신호 판정에는 사용하지 않음) -->
+    <div class="vp-card" id="vpCard" style="display:none;">
+      <div class="vp-head">
+        <span class="vp-title" data-i18n="vpTitle">Volume Profile</span>
+        <span class="vp-tag" data-i18n="vpObserveOnly">관찰용</span>
+      </div>
+      <div id="vpBody"></div>
+    </div>
+
+    <!-- 종합 신뢰도: 신호 품질 + 과거 성능 + 유사 패턴 + 시장 상태 -->
+    <div class="conf-card" id="confCard" style="display:none;">
+      <div class="conf-head">
+        <span class="conf-title" data-i18n="confTitle">종합 신뢰도</span>
+        <span class="conf-value" id="confValue">-</span>
+      </div>
+      <div class="conf-bar"><div class="conf-bar-fill" id="confBarFill"></div></div>
+      <div class="conf-breakdown" id="confBreakdown"></div>
+      <div class="conf-note" id="confNote"></div>
+    </div>
+
+    <div class="sim-compare" id="simCompareCard" style="display:none;">
+      <div class="sim-compare-head">
+        <span class="sim-compare-title" data-i18n="simCompareTitle">유사 패턴 비교</span>
+        <span class="sim-compare-badge" id="simCompareBadge">-</span>
+      </div>
+      <div class="sim-compare-row">
+        <div class="sim-compare-cell">
+          <div class="sim-compare-k" id="simAllLabel">-</div>
+          <div class="sim-compare-v" id="simAllValue">-</div>
+        </div>
+        <div class="sim-compare-arrow">vs</div>
+        <div class="sim-compare-cell">
+          <div class="sim-compare-k" data-i18n="simSimilarLabel">유사 패턴</div>
+          <div class="sim-compare-v" id="simSimilarValue">-</div>
+        </div>
+      </div>
+      <div class="sim-compare-note" id="simCompareNote"></div>
+    </div>
+
+    <div class="lock-panel" id="lockPanel">
+      <button id="lockBtn" class="lock-btn off" data-i18n="lockIn">LOCK IN</button>
+      <button id="recordStartBtn" class="record-start-btn" data-i18n="startRecording" style="display:none;">기록 시작</button>
+    </div>
+    <div id="lockDisplay" class="lock-display"></div>
+
+    <div class="score-panel">
+      <div class="score-panel-title" data-i18n="conditionsMet">충족 조건</div>
+      <div id="detailConditions"></div>
+    </div>
+
+    <div class="tf-tabs">
+      <button class="tf-tab active" data-tf="1m" data-i18n="tf1">1분봉 (진입 타이밍)</button>
+      <button class="tf-tab" data-tf="5m" data-i18n="tf5">5분봉 (방향)</button>
+      <button class="tf-tab" data-tf="15m" data-i18n="tf15">15분봉 (큰 추세)</button>
+    </div>
+
+    <div class="detail-stats">
+      <div class="detail-stat"><div class="k" data-i18n="trend">추세</div><div class="v" id="tfTrend">-</div></div>
+      <div class="detail-stat"><div class="k">DIF</div><div class="v" id="tfDif">-</div></div>
+      <div class="detail-stat"><div class="k">DEA</div><div class="v" id="tfDea">-</div></div>
+      <div class="detail-stat"><div class="k">RSI</div><div class="v" id="tfRsi">-</div></div>
+    </div>
+
+    <div class="chart-label-row">
+      <span class="chart-label" data-i18n="chart">가격 / Heikin Ashi</span>
+      <span class="chart-legend">
+        <span class="legend-item"><i class="legend-dot" id="legendLongDot"></i><span data-i18n="legendLong">과거 LONG 신호</span></span>
+        <span class="legend-item"><i class="legend-dot" id="legendShortDot"></i><span data-i18n="legendShort">과거 SHORT 신호</span></span>
+      </span>
+    </div>
+    <canvas class="chart-price-lg" id="detailChartPrice"></canvas>
+
+    <div class="chart-label-row">
+      <span class="chart-label" data-i18n="macdChart">MACD</span>
+      <span class="chart-legend">
+        <span class="legend-item"><i class="legend-dot" id="legendDifDot"></i><span data-i18n="legendDif">DIF</span></span>
+        <span class="legend-item"><i class="legend-dot" id="legendDeaDot"></i><span data-i18n="legendDea">DEA</span></span>
+      </span>
+    </div>
+    <canvas class="chart-sub-lg" id="detailChartMacd"></canvas>
+
+    <div class="chart-label" data-i18n="rsiChart">RSI</div>
+    <canvas class="chart-sub-lg" id="detailChartRsi"></canvas>
+
+    <button id="recordEntryBtn" class="record-entry-btn" data-i18n="recordEntry">진입 기록</button>
+
+    <div id="detailUpdated">-</div>
+  </div>
+</div>
+
+<!-- Records view ("내 기록") -->
+<div id="recordsView">
+  <div class="records-stats">
+    <div class="stat-box"><div class="stat-k" data-i18n="totalTrades">총 거래</div><div class="stat-v" id="statTotal">0</div></div>
+    <div class="stat-box"><div class="stat-k" data-i18n="winRate">승률</div><div class="stat-v" id="statWinRate">-</div></div>
+    <div class="stat-box"><div class="stat-k" data-i18n="totalPnl">총 손익</div><div class="stat-v" id="statPnl">-</div></div>
+  </div>
+  <button id="addTradeBtn" class="add-trade-btn" data-i18n="addTrade">거래 기록 추가</button>
+  <div id="tradeList"></div>
+
+  <div class="records-section-title" data-i18n="lockRecordsTitle">LOCK 기록</div>
+  <div id="lockRecordList"></div>
+</div>
+
+<!-- 신호 성능 화면 (보정 전/후 A/B 비교) -->
+<div id="performanceView">
+  <div class="perf-filters">
+    <div class="perf-filter-row" id="perfMarketFilter">
+      <button type="button" class="perf-filter-btn active" data-market="all" data-i18n="filterAll">전체</button>
+      <button type="button" class="perf-filter-btn" data-market="crypto" data-i18n="coinFutures">코인 선물</button>
+      <button type="button" class="perf-filter-btn" data-market="stock" data-i18n="stockFutures">주식 선물</button>
+    </div>
+    <div class="perf-filter-row" id="perfScoreFilter">
+      <button type="button" class="perf-filter-btn active" data-score="all" data-i18n="filterAll">전체</button>
+      <button type="button" class="perf-filter-btn" data-score="80">80</button>
+      <button type="button" class="perf-filter-btn" data-score="100">100</button>
+    </div>
+  </div>
+  <div id="perfSummary"></div>
+  <div class="records-section-title" data-i18n="perfByDirection">방향별 성능</div>
+  <div id="perfDirection"></div>
+  <div class="records-section-title" data-i18n="perfByGroup">그룹별 성능</div>
+  <div id="perfGroups"></div>
+  <div class="perf-note" data-i18n="perfDisclaimer">
+    이 수치는 과거 기록에 기반한 참고 정보이며 미래 수익을 보장하지 않습니다.
+  </div>
+</div>
+
+<!-- Modal: 거래 추가 (진입 기록) -->
+<div id="addTradeModal" class="modal-overlay">
+  <div class="modal-box">
+    <h3 data-i18n="recordEntry">진입 기록</h3>
+    <form id="addTradeForm">
+      <label data-i18n="selectSymbol">종목 선택</label>
+      <select id="tradeSymbolSelect"></select>
+      <label data-i18n="selectDirection">방향 선택</label>
+      <div class="dir-toggle">
+        <button type="button" class="dir-btn long active" data-dir="long" data-i18n="long">LONG</button>
+        <button type="button" class="dir-btn short" data-dir="short" data-i18n="short">SHORT</button>
+      </div>
+      <label data-i18n="entryPrice">진입가</label>
+      <input type="number" id="tradeEntryPrice" step="any" required>
+      <div class="field-hint" data-i18n="currentPriceHint">현재가로 자동 입력됨</div>
+      <label data-i18n="notional">포지션 크기 (USDT)</label>
+      <input type="number" id="tradeNotional" step="any" value="100">
+      <div class="modal-actions">
+        <button type="button" class="ghost-btn" id="addTradeCancel" data-i18n="cancel">취소</button>
+        <button type="submit" class="primary-btn" data-i18n="submit">기록</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: 청산 기록 -->
+<div id="closeTradeModal" class="modal-overlay">
+  <div class="modal-box">
+    <h3 data-i18n="recordExit">청산 기록</h3>
+    <form id="closeTradeForm">
+      <label data-i18n="exitPrice">청산가</label>
+      <input type="number" id="tradeExitPrice" step="any" required>
+      <div class="field-hint" data-i18n="currentPriceHint">현재가로 자동 입력됨</div>
+      <div class="modal-actions">
+        <button type="button" class="ghost-btn" id="closeTradeCancel" data-i18n="cancel">취소</button>
+        <button type="submit" class="primary-btn" data-i18n="submit">기록</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: 손실 분석 -->
+<div id="analysisModal" class="modal-overlay">
+  <div class="modal-box">
+    <h3 data-i18n="analysisTitle">주요 원인으로 추정</h3>
+    <div id="analysisBody"></div>
+    <div class="modal-actions">
+      <button type="button" class="ghost-btn" id="analysisClose" data-i18n="close">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: LOCK 기록 시작 전 LONG/SHORT + 레버리지 선택 -->
+<div id="leverageModal" class="modal-overlay">
+  <div class="modal-box">
+    <h3 data-i18n="selectPositionTitle">포지션 선택</h3>
+    <label data-i18n="selectDirection">방향 선택</label>
+    <div class="dir-toggle">
+      <button type="button" class="dir-btn lev-dir-btn long active" data-dir="long" data-i18n="long">LONG</button>
+      <button type="button" class="dir-btn lev-dir-btn short" data-dir="short" data-i18n="short">SHORT</button>
+    </div>
+    <label data-i18n="selectLeverage">레버리지 배율</label>
+    <select id="leverageSelect">
+      <option value="1">1x</option>
+      <option value="3">3x</option>
+      <option value="5">5x</option>
+      <option value="10" selected>10x</option>
+      <option value="20">20x</option>
+      <option value="50">50x</option>
+      <option value="100">100x</option>
+    </select>
+    <div class="modal-actions">
+      <button type="button" class="ghost-btn" id="leverageCancel" data-i18n="cancel">취소</button>
+      <button type="button" class="primary-btn" id="leverageConfirm" data-i18n="submit">확인</button>
+    </div>
+  </div>
+</div>
+
+<!-- Install (PWA) banner -->
+<div id="installBanner">
+  <div class="install-text">
+    <strong data-i18n="installTitle">홈 화면에 추가</strong>
+    <span data-i18n="installBody">앱처럼 바로 켤 수 있도록 홈 화면에 추가하세요.</span>
+  </div>
+  <button id="installBtn" data-i18n="installBtn">추가</button>
+  <button id="installDismiss">&times;</button>
+</div>
+
+<script src="./config.js"></script>
+<script src="./i18n.js"></script>
+<script src="./heikinAshi.js"></script>
+<script src="./macd.js"></script>
+<script src="./rsi.js"></script>
+<script src="./signals.js"></script>
+<script src="./signalLog.js"></script>
+<script src="./tradeLog.js"></script>
+<script src="./lossAnalysis.js"></script>
+<script src="./lockRange.js"></script>
+<script src="./patternSnapshot.js"></script>
+<script src="./patternLearn.js"></script>
+<script src="./patternAnalysis.js"></script>
+<script src="./patternSimilarity.js"></script>
+<script src="./confidenceAdjust.js"></script>
+<script src="./signalPerformance.js"></script>
+<script src="./confBlockLog.js"></script>
+<script src="./volumeProfile.js"></script>
+<script src="./wyckoff.js"></script>
+<script src="./alertDetail.js"></script>
+<script src="./backgroundMonitor.js"></script>
+<script src="./binanceApi.js"></script>
+<script src="./state.js"></script>
+<script src="./charts.js"></script>
+<script src="./ui.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>
